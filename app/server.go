@@ -27,6 +27,20 @@ func main() {
 	}
 	req := make([]byte, 1024)
 	conn.Read(req)
+	if strings.HasPrefix(string(req), "GET /user-agent") {
+		lines := strings.Split(string(req), "\r\n")
+		var userAgent string
+		for _, line := range lines {
+			if strings.HasPrefix(line, "User-Agent: ") {
+				userAgent = strings.TrimPrefix(line, "User-Agent: ")
+				break
+			}
+		}
+		response := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(userAgent), userAgent)
+		conn.Write([]byte(response))
+		conn.Close()
+		return
+	}
 	if strings.HasPrefix(string(req), "GET /echo/") {
 		fullPath := strings.Split(string(req), " ")[1]
 		path := strings.Split(fullPath, "/")[2]
