@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -36,13 +37,42 @@ func handleConnection(conn net.Conn) {
 
     if strings.HasPrefix(string(req), "GET /user-agent") {
         sendUserAgentResponse(conn, req)
-    } else if strings.HasPrefix(string(req), "GET /echo/") {
-        sendEchoResponse(conn, req)
-    } else if strings.HasPrefix(string(req), "GET / HTTP/1.1") {
-        conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
-    } else {
-        conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
+        return
     }
+    if strings.HasPrefix(string(req), "GET /echo/") {
+        sendEchoResponse(conn, req)
+        return
+    }
+    if strings.HasPrefix(string(req), "GET /files/") {
+        sendFileResponse(conn, req)
+        return
+    }
+    if strings.HasPrefix(string(req), "GET / HTTP/1.1") {
+        writeResponse(conn, "HTTP/1.1 200 OK\r\n\r\n", nil)
+        return
+    }
+    write404(conn)
+}
+
+func sendFileResponse(conn net.Conn, req []byte) {
+	var directory string // Ensure this variable is initialized properly elsewhere
+    filename := strings.TrimPrefix(strings.Split(string(req), " ")[1], "/files/")
+    filePath := directory + filename
+
+    fileInfo, err := os.Stat(filePath)
+    if err != nil {
+        write404(conn)
+        return
+    }
+
+    fileContent, err := ioutil.ReadFile(filePath)
+    if err != nil {
+        write500(conn)
+        return
+    }
+
+    responseHeader := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n", fileInfo.Size())
+    writeResponse(conn, responseHeader, fileContent)
 }
 
 func sendUserAgentResponse(conn net.Conn, req []byte) {
@@ -66,4 +96,19 @@ func extractHeader(req []byte, headerName string) string {
         }
     }
     return ""
+}
+
+func write500(conn net.Conn) {
+	conn.Write([]byte("HTTP/1.1 500 Internal Server Error\r\n\r\n"))
+}
+
+func write404(conn net.Conn) {
+	conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
+}
+
+func writeResponse(conn net.Conn, header string, body []byte) {
+    conn.Write([]byte(header))
+    if body != nil {
+        conn.Write(body)
+    }
 }
