@@ -218,13 +218,4 @@ func writeResponse(conn net.Conn, header string, body []byte,useGzip bool) {
 
     conn.Write([]byte(header))
 	conn.Write(body)
-    // if body != nil {
-    //     if useGzip {
-    //         gz := gzip.NewWriter(conn)
-    //         gz.Write(body)
-    //         gz.Close()
-    //     } else {
-    //         conn.Write(body)
-    //     }
-    // }
 }
