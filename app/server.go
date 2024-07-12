@@ -215,6 +215,9 @@ func writeResponse(conn net.Conn, header string, body []byte,useGzip bool) {
 		header += "Content-Encoding: gzip\r\n"
 	}
 	header += "Content-Encoding: text/plain\r\n"
+	contentLength := len(body)
+    header += "Content-Length: " + fmt.Sprint(contentLength) + "\r\n"
+	header += "\r\n"
 
     conn.Write([]byte(header))
 	conn.Write(body)
