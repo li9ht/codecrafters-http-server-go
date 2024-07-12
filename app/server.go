@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"compress/gzip"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -45,12 +48,24 @@ func handleConnection(conn net.Conn) {
     req := make([]byte, 4096)
     conn.Read(req)
 
+	var isGzip bool = false
+	headers, err := readHeaders(req)
+	if err != nil {
+		// Handle error, possibly send a 500 Internal Server Error response
+		write500(conn)
+		return
+	}
+	acceptEncoding, ok := headers["Accept-Encoding"]
+	if ok && strings.Contains(acceptEncoding, "gzip") {
+		isGzip = true
+	}
+
     if strings.HasPrefix(string(req), "GET /user-agent") {
         sendUserAgentResponse(conn, req)
         return
     }
     if strings.HasPrefix(string(req), "GET /echo/") {
-        sendEchoResponse(conn, req)
+        sendEchoResponse(conn, req,isGzip)
         return
     }
     if strings.HasPrefix(string(req), "GET /files/") {	
@@ -68,10 +83,41 @@ func handleConnection(conn net.Conn) {
 		return
 	}
     if strings.HasPrefix(string(req), "GET / HTTP/1.1") {
-        writeResponse(conn, "HTTP/1.1 200 OK\r\n\r\n", nil)
+        writeResponse(conn, "HTTP/1.1 200 OK\r\n\r\n", nil,isGzip)
         return
     }
     write404(conn)
+}
+
+func readHeaders(req []byte) (map[string]string, error) {
+    headers := make(map[string]string)
+    reqReader := bytes.NewReader(req)
+    bufReader := bufio.NewReader(reqReader)
+
+    _, err := bufReader.ReadString('\n')
+    if err != nil {
+        return nil, err 
+    }
+
+    for {
+        line, err := bufReader.ReadString('\n')
+        if err != nil {
+            break 
+        }
+        line = strings.TrimSpace(line) 
+        if line == "" {
+            break 
+        }
+
+        parts := strings.SplitN(line, ":", 2)
+        if len(parts) == 2 {
+            key := strings.TrimSpace(parts[0])
+            value := strings.TrimSpace(parts[1])
+            headers[key] = value
+        }
+    }
+
+    return headers, nil
 }
 
 func savePostFile(conn net.Conn, req []byte) {
@@ -90,7 +136,7 @@ func savePostFile(conn net.Conn, req []byte) {
 		write500(conn)
 		return
 	}
-	writeResponse(conn, "HTTP/1.1 201 Created\r\n\r\n", nil)
+	writeResponse(conn, "HTTP/1.1 201 Created\r\n\r\n", nil,false)
 }
 
 func getContentLength(reqStr string) string {
@@ -123,7 +169,7 @@ func sendFileResponse(conn net.Conn, req []byte) {
     }
 
     responseHeader := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n", fileInfo.Size())
-    writeResponse(conn, responseHeader, fileContent)
+    writeResponse(conn, responseHeader, fileContent,false)
 }
 
 func sendUserAgentResponse(conn net.Conn, req []byte) {
@@ -132,11 +178,15 @@ func sendUserAgentResponse(conn net.Conn, req []byte) {
     conn.Write([]byte(response))
 }
 
-func sendEchoResponse(conn net.Conn, req []byte) {
-    fullPath := strings.Split(string(req), " ")[1]
-    path := strings.Split(fullPath, "/")[2]
-    pathLength := len(path)
-    conn.Write([]byte(fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %v\r\n\r\n%v", pathLength, path)))
+func sendEchoResponse(conn net.Conn, req []byte, useGzip bool) {
+	fullPath := strings.Split(string(req), " ")[1]
+	path := strings.Split(fullPath, "/")[2]
+	// pathLength := len(path)
+	// response := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %v\r\n\r\n%v", pathLength, path)
+	// conn.Write([]byte(response))
+	header := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n"
+	body := []byte(path)
+	writeResponse(conn, header, body, useGzip)
 }
 
 func extractHeader(req []byte, headerName string) string {
@@ -161,9 +211,20 @@ func write404(conn net.Conn) {
     }
 }
 
-func writeResponse(conn net.Conn, header string, body []byte) {
+func writeResponse(conn net.Conn, header string, body []byte,useGzip bool) {
+	if useGzip {
+		header += "Content-Encoding: gzip\r\n"
+	}
+	header += "Content-Encoding: text/plain\r\n"
+
     conn.Write([]byte(header))
     if body != nil {
-        conn.Write(body)
+        if useGzip {
+            gz := gzip.NewWriter(conn)
+            gz.Write(body)
+            gz.Close()
+        } else {
+            conn.Write(body)
+        }
     }
 }
