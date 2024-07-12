@@ -69,7 +69,7 @@ func sendFileResponse(conn net.Conn, req []byte) {
 	
     filename := strings.TrimPrefix(strings.Split(string(req), " ")[1], "/files/")
     filePath := directory + filename
-	log.Printf("Accessing file: %s", filePath)
+	// log.Printf("Accessing file: %s", filePath)
 
     fileInfo, err := os.Stat(filePath)
     if err != nil {
