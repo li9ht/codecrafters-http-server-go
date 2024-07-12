@@ -41,7 +41,7 @@ func main() {
 func handleConnection(conn net.Conn) {
     defer conn.Close()
 
-    req := make([]byte, 1024)
+    req := make([]byte, 4096)
     conn.Read(req)
 
     if strings.HasPrefix(string(req), "GET /user-agent") {
@@ -59,11 +59,31 @@ func handleConnection(conn net.Conn) {
         sendFileResponse(conn, req)
         return
     }
+	if strings.HasPrefix(string(req), "POST /files/") {
+		if directory == "" {
+			log.Fatal("You must specify a directory with --directory")
+		}
+		savePostFile(conn, req)
+		return
+	}
     if strings.HasPrefix(string(req), "GET / HTTP/1.1") {
         writeResponse(conn, "HTTP/1.1 200 OK\r\n\r\n", nil)
         return
     }
     write404(conn)
+}
+
+func savePostFile(conn net.Conn, req []byte) {
+	filename := strings.TrimPrefix(strings.Split(string(req), " ")[1], "/files/")
+	filePath := directory + filename
+	fileContent := strings.Split(string(req), "\r\n\r\n")[1]
+	err := ioutil.WriteFile(filePath, []byte(fileContent), 0644)
+	if err != nil {
+		log.Printf("Error writing file: %v", err)
+		write500(conn)
+		return
+	}
+	writeResponse(conn, "HTTP/1.1 200 OK\r\n\r\n", nil)
 }
 
 func sendFileResponse(conn net.Conn, req []byte) {
