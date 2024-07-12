@@ -48,6 +48,12 @@ func handleConnection(conn net.Conn) {
         return
     }
     if strings.HasPrefix(string(req), "GET /files/") {
+		flag.StringVar(&directory, "directory", "", "Specifies the directory where the files are stored")
+		flag.Parse()
+	
+		if directory == "" {
+			log.Fatal("You must specify a directory with --directory")
+		}
         sendFileResponse(conn, req)
         return
     }
@@ -59,13 +65,6 @@ func handleConnection(conn net.Conn) {
 }
 
 func sendFileResponse(conn net.Conn, req []byte) {
-	
-	flag.StringVar(&directory, "directory", "", "Specifies the directory where the files are stored")
-    flag.Parse()
-
-    if directory == "" {
-        log.Fatal("You must specify a directory with --directory")
-    }
 	
     filename := strings.TrimPrefix(strings.Split(string(req), " ")[1], "/files/")
     filePath := directory + filename
@@ -116,7 +115,11 @@ func write500(conn net.Conn) {
 }
 
 func write404(conn net.Conn) {
-	conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
+	const response = "HTTP/1.1 404 Not Found\r\n\r\n"
+    _, err := conn.Write([]byte(response))
+    if err != nil {
+        log.Printf("Error sending 404 response: %v", err)
+    }
 }
 
 func writeResponse(conn net.Conn, header string, body []byte) {
