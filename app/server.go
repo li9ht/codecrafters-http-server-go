@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -74,16 +75,32 @@ func handleConnection(conn net.Conn) {
 }
 
 func savePostFile(conn net.Conn, req []byte) {
+
+	reqStr := string(req)
+    contentLength := getContentLength(reqStr)
+	bodyStartIndex := strings.Index(reqStr, "\r\n\r\n") + 4
+    contentLengthInt, _ := strconv.Atoi(contentLength)
+    requestBody := reqStr[bodyStartIndex : bodyStartIndex+contentLengthInt]
+
 	filename := strings.TrimPrefix(strings.Split(string(req), " ")[1], "/files/")
 	filePath := directory + filename
-	fileContent := strings.Split(string(req), "\r\n\r\n")[1]
-	err := ioutil.WriteFile(filePath, []byte(fileContent), 0644)
+	err := ioutil.WriteFile(filePath, []byte(requestBody), 0644)
 	if err != nil {
 		log.Printf("Error writing file: %v", err)
 		write500(conn)
 		return
 	}
 	writeResponse(conn, "HTTP/1.1 201 Created\r\n\r\n", nil)
+}
+
+func getContentLength(reqStr string) string {
+    lines := strings.Split(reqStr, "\r\n")
+    for _, line := range lines {
+        if strings.HasPrefix(line, "Content-Length: ") {
+            return strings.TrimPrefix(line, "Content-Length: ")
+        }
+    }
+    return ""
 }
 
 func sendFileResponse(conn net.Conn, req []byte) {
