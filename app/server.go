@@ -154,7 +154,7 @@ func sendFileResponse(conn net.Conn, req []byte) {
     filePath := directory + filename
 	// log.Printf("Accessing file: %s", filePath)
 
-    fileInfo, err := os.Stat(filePath)
+    _, err := os.Stat(filePath)
     if err != nil {
 		log.Printf("Error: %v", err)
         write404(conn)
@@ -167,8 +167,8 @@ func sendFileResponse(conn net.Conn, req []byte) {
         return
     }
 
-    responseHeader := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n", fileInfo.Size())
-    writeResponse(conn, responseHeader, fileContent,false)
+    responseHeader := "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\n"
+	writeResponse(conn, responseHeader, fileContent,false)
 }
 
 func sendUserAgentResponse(conn net.Conn, req []byte) {
