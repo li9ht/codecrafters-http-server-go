@@ -156,7 +156,7 @@ func sendFileResponse(conn net.Conn, req []byte) {
 
     fileInfo, err := os.Stat(filePath)
     if err != nil {
-		// log.Printf("Error: %v", err)
+		log.Printf("Error: %v", err)
         write404(conn)
         return
     }
