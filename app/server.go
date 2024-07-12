@@ -83,7 +83,7 @@ func savePostFile(conn net.Conn, req []byte) {
 		write500(conn)
 		return
 	}
-	writeResponse(conn, "HTTP/1.1 200 OK\r\n\r\n", nil)
+	writeResponse(conn, "HTTP/1.1 201 Created\r\n\r\n", nil)
 }
 
 func sendFileResponse(conn net.Conn, req []byte) {
