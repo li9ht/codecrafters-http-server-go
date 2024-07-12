@@ -10,9 +10,14 @@ import (
 	"strings"
 )
 
-var directory string 
+var directory string
+
+func init() {
+    flag.StringVar(&directory, "directory", "/default/path", "dir")
+}
 
 func main() {
+	flag.Parse()
     fmt.Println("Logs from your program will appear here!")
 
     l, err := net.Listen("tcp", "0.0.0.0:4221")
@@ -47,10 +52,7 @@ func handleConnection(conn net.Conn) {
         sendEchoResponse(conn, req)
         return
     }
-    if strings.HasPrefix(string(req), "GET /files/") {
-		flag.StringVar(&directory, "directory", "", "Specifies the directory where the files are stored")
-		flag.Parse()
-	
+    if strings.HasPrefix(string(req), "GET /files/") {	
 		if directory == "" {
 			log.Fatal("You must specify a directory with --directory")
 		}
@@ -72,7 +74,7 @@ func sendFileResponse(conn net.Conn, req []byte) {
 
     fileInfo, err := os.Stat(filePath)
     if err != nil {
-		log.Printf("Error: %v", err)
+		// log.Printf("Error: %v", err)
         write404(conn)
         return
     }
