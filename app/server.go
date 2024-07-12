@@ -27,6 +27,14 @@ func main() {
 	}
 	req := make([]byte, 1024)
 	conn.Read(req)
+	if strings.HasPrefix(string(req), "GET /echo/") {
+		fullPath := strings.Split(string(req), " ")[1]
+		path := strings.Split(fullPath, "/")[2]
+		pathLength := len(path)
+		conn.Write([]byte(fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %v\r\n\r\n%v", pathLength, path)))
+		conn.Close()
+		return
+	}
 	if !strings.HasPrefix(string(req), "GET / HTTP/1.1") {
 		conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
 		conn.Close()
