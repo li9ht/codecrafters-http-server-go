@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -218,13 +217,14 @@ func writeResponse(conn net.Conn, header string, body []byte,useGzip bool) {
 	header += "Content-Encoding: text/plain\r\n"
 
     conn.Write([]byte(header))
-    if body != nil {
-        if useGzip {
-            gz := gzip.NewWriter(conn)
-            gz.Write(body)
-            gz.Close()
-        } else {
-            conn.Write(body)
-        }
-    }
+	conn.Write(body)
+    // if body != nil {
+    //     if useGzip {
+    //         gz := gzip.NewWriter(conn)
+    //         gz.Write(body)
+    //         gz.Close()
+    //     } else {
+    //         conn.Write(body)
+    //     }
+    // }
 }
