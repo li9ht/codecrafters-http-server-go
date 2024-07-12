@@ -1,12 +1,16 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"strings"
 )
+
+var directory string 
 
 func main() {
     fmt.Println("Logs from your program will appear here!")
@@ -55,12 +59,21 @@ func handleConnection(conn net.Conn) {
 }
 
 func sendFileResponse(conn net.Conn, req []byte) {
-	var directory string // Ensure this variable is initialized properly elsewhere
+	
+	flag.StringVar(&directory, "directory", "", "Specifies the directory where the files are stored")
+    flag.Parse()
+
+    if directory == "" {
+        log.Fatal("You must specify a directory with --directory")
+    }
+	
     filename := strings.TrimPrefix(strings.Split(string(req), " ")[1], "/files/")
     filePath := directory + filename
+	log.Printf("Accessing file: %s", filePath)
 
     fileInfo, err := os.Stat(filePath)
     if err != nil {
+		log.Printf("Error: %v", err)
         write404(conn)
         return
     }
